@@ -44,8 +44,6 @@ const CONFIG = {
             1: '#4CAF50', // Green
             2: '#2196F3', // Blue
             3: '#FF9800', // Orange
-            4: '#E91E63', // Pink
-            5: '#9C27B0', // Purple
         },
         PREVIEW: 'rgba(255, 255, 255, 0.3)',
         CLEARED: '#FFFFFF'
@@ -71,22 +69,19 @@ const CONFIG = {
     },
 
     BLOCKS: {
+        NUM_CHOICES: 3,
         TYPES: [
-            // 1x1
+            // 1x1 square
             [[1]],
-            // 1x2
-            [[1, 1]],
-            // 1x3
-            [[1, 1, 1]],
-            // 2x2
+            
+            // 2x2 square
             [[1, 1],
              [1, 1]],
-            // L shape
-            [[1, 0],
-             [1, 1]],
-            // T shape
+             
+            // 3x3 square
             [[1, 1, 1],
-             [0, 1, 0]],
+             [1, 1, 1],
+             [1, 1, 1]]
         ]
     },
 

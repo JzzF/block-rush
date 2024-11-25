@@ -2,17 +2,29 @@ class Renderer {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.blockSize = canvas.width / CONFIG.GAME.GRID_SIZE;
-        this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
+        this.onBlockSelect = null;
+        this.resize();
+
+        // Handle canvas resize
+        window.addEventListener('resize', () => this.resize());
     }
 
-    resizeCanvas() {
-        const container = this.canvas.parentElement;
-        const size = Math.min(container.clientWidth, container.clientHeight);
+    resize() {
+        const container = document.getElementById('canvas-container');
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        
+        // Make the canvas square based on the smaller dimension
+        const size = Math.min(containerWidth, containerHeight);
         this.canvas.width = size;
-        this.canvas.height = size;
-        this.blockSize = size / CONFIG.GAME.GRID_SIZE;
+        this.canvas.height = size * 1.2; // Extra space for block options
+        
+        // Calculate block size
+        this.blockSize = Math.floor(size / CONFIG.GAME.GRID_SIZE);
+        
+        // Center the grid
+        this.gridOffsetX = (this.canvas.width - (this.blockSize * CONFIG.GAME.GRID_SIZE)) / 2;
+        this.gridOffsetY = this.blockSize / 2;
     }
 
     clear() {
@@ -25,128 +37,116 @@ class Renderer {
 
         // Draw vertical lines
         for (let x = 0; x <= CONFIG.GAME.GRID_SIZE; x++) {
+            const xPos = this.gridOffsetX + (x * this.blockSize);
             this.ctx.beginPath();
-            this.ctx.moveTo(x * this.blockSize, 0);
-            this.ctx.lineTo(x * this.blockSize, this.canvas.height);
+            this.ctx.moveTo(xPos, this.gridOffsetY);
+            this.ctx.lineTo(xPos, this.gridOffsetY + (CONFIG.GAME.GRID_SIZE * this.blockSize));
             this.ctx.stroke();
         }
 
         // Draw horizontal lines
         for (let y = 0; y <= CONFIG.GAME.GRID_SIZE; y++) {
+            const yPos = this.gridOffsetY + (y * this.blockSize);
             this.ctx.beginPath();
-            this.ctx.moveTo(0, y * this.blockSize);
-            this.ctx.lineTo(this.canvas.width, y * this.blockSize);
+            this.ctx.moveTo(this.gridOffsetX, yPos);
+            this.ctx.lineTo(this.gridOffsetX + (CONFIG.GAME.GRID_SIZE * this.blockSize), yPos);
             this.ctx.stroke();
         }
     }
 
     drawBlocks(grid) {
-        for (let y = 0; y < CONFIG.GAME.GRID_SIZE; y++) {
-            for (let x = 0; x < CONFIG.GAME.GRID_SIZE; x++) {
+        for (let y = 0; y < grid.length; y++) {
+            for (let x = 0; x < grid[y].length; x++) {
                 if (grid[y][x]) {
-                    this.drawBlock(x, y, CONFIG.COLORS.BLOCKS[grid[y][x]]);
+                    this.drawBlock(
+                        x * this.blockSize + this.gridOffsetX,
+                        y * this.blockSize + this.gridOffsetY,
+                        CONFIG.COLORS.BLOCKS[grid[y][x]]
+                    );
                 }
             }
         }
     }
 
     drawBlock(x, y, color) {
-        const padding = 1; // Padding for visual separation
         this.ctx.fillStyle = color;
-        this.ctx.fillRect(
-            x * this.blockSize + padding,
-            y * this.blockSize + padding,
-            this.blockSize - padding * 2,
-            this.blockSize - padding * 2
-        );
+        this.ctx.fillRect(x + 1, y + 1, this.blockSize - 2, this.blockSize - 2);
+        
+        // Add a slight 3D effect
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.fillRect(x + 1, y + 1, this.blockSize - 2, 3);
+        this.ctx.fillRect(x + 1, y + 1, 3, this.blockSize - 2);
+        
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        this.ctx.fillRect(x + this.blockSize - 4, y + 1, 3, this.blockSize - 2);
+        this.ctx.fillRect(x + 1, y + this.blockSize - 4, this.blockSize - 2, 3);
     }
 
     drawPreview(block, mouseX, mouseY) {
-        if (!block) return;
+        const blockPattern = block.type || block;
+        const gridX = Math.floor((mouseX - this.gridOffsetX) / this.blockSize);
+        const gridY = Math.floor((mouseY - this.gridOffsetY) / this.blockSize);
 
-        const gridX = Math.floor(mouseX / this.blockSize);
-        const gridY = Math.floor(mouseY / this.blockSize);
-
-        for (let y = 0; y < block.length; y++) {
-            for (let x = 0; x < block[0].length; x++) {
-                if (block[y][x]) {
-                    const blockX = gridX + x;
-                    const blockY = gridY + y;
-
-                    if (blockX >= 0 && blockX < CONFIG.GAME.GRID_SIZE &&
-                        blockY >= 0 && blockY < CONFIG.GAME.GRID_SIZE) {
-                        this.ctx.fillStyle = CONFIG.COLORS.PREVIEW;
-                        this.ctx.fillRect(
-                            blockX * this.blockSize,
-                            blockY * this.blockSize,
-                            this.blockSize,
-                            this.blockSize
-                        );
-                    }
+        this.ctx.globalAlpha = 0.5;
+        for (let i = 0; i < blockPattern.length; i++) {
+            for (let j = 0; j < blockPattern[0].length; j++) {
+                if (blockPattern[i][j]) {
+                    const x = (gridX + j) * this.blockSize + this.gridOffsetX;
+                    const y = (gridY + i) * this.blockSize + this.gridOffsetY;
+                    this.drawBlock(x, y, CONFIG.COLORS.BLOCKS[block.color || 1]);
                 }
             }
         }
+        this.ctx.globalAlpha = 1;
     }
 
     drawBlockOptions(blocks, selectedIndex) {
-        const container = document.getElementById('blocks-container');
-        container.innerHTML = '';
+        const optionsY = this.gridOffsetY + (CONFIG.GAME.GRID_SIZE + 1) * this.blockSize;
+        const spacing = this.blockSize / 2;
+        const totalWidth = blocks.reduce((width, block) => {
+            return width + (block.type[0].length * this.blockSize) + spacing;
+        }, -spacing);
+        
+        let currentX = (this.canvas.width - totalWidth) / 2;
 
         blocks.forEach((block, index) => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 60;
-            canvas.height = 60;
-            canvas.className = `block-option${index === selectedIndex ? ' selected' : ''}`;
+            const blockWidth = block.type[0].length * this.blockSize;
+            const blockHeight = block.type.length * this.blockSize;
             
-            const ctx = canvas.getContext('2d');
-            const blockSize = 20;
+            // Draw selection background if selected
+            if (index === selectedIndex) {
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.fillRect(
+                    currentX - spacing/2,
+                    optionsY - spacing/2,
+                    blockWidth + spacing,
+                    blockHeight + spacing
+                );
+            }
 
-            // Draw block preview
-            ctx.fillStyle = CONFIG.COLORS.BLOCKS[1];
-            for (let y = 0; y < block.length; y++) {
-                for (let x = 0; x < block[0].length; x++) {
-                    if (block[y][x]) {
-                        ctx.fillRect(
-                            (x + (3 - block[0].length) / 2) * blockSize,
-                            (y + (3 - block.length) / 2) * blockSize,
-                            blockSize - 1,
-                            blockSize - 1
+            // Draw the block pattern
+            for (let i = 0; i < block.type.length; i++) {
+                for (let j = 0; j < block.type[0].length; j++) {
+                    if (block.type[i][j]) {
+                        this.drawBlock(
+                            currentX + j * this.blockSize,
+                            optionsY + i * this.blockSize,
+                            CONFIG.COLORS.BLOCKS[block.color]
                         );
                     }
                 }
             }
 
-            canvas.addEventListener('click', () => {
-                document.querySelectorAll('.block-option').forEach(el => el.classList.remove('selected'));
-                canvas.classList.add('selected');
-                this.onBlockSelect?.(index);
-            });
+            // Add click handler for this block option
+            const blockArea = {
+                x: currentX - spacing/2,
+                y: optionsY - spacing/2,
+                width: blockWidth + spacing,
+                height: blockHeight + spacing,
+                index: index
+            };
 
-            container.appendChild(canvas);
+            currentX += blockWidth + spacing;
         });
-    }
-
-    drawPhaseTransition(phase) {
-        const text = `Phase ${phase}`;
-        const multiplier = CONFIG.GAME.PHASES[phase].MULTIPLIER;
-        const color = CONFIG.GAME.PHASES[phase].COLOR;
-
-        this.ctx.save();
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.ctx.font = '48px Arial';
-        this.ctx.fillStyle = color;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(text, this.canvas.width / 2, this.canvas.height / 2 - 30);
-
-        this.ctx.font = '24px Arial';
-        this.ctx.fillText(
-            `×${multiplier.toFixed(1)} Score Multiplier`,
-            this.canvas.width / 2,
-            this.canvas.height / 2 + 30
-        );
-        this.ctx.restore();
     }
 }

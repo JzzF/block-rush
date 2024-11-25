@@ -15,6 +15,19 @@ class GameState {
         this.isGameOver = false;
         this.lastMoveTime = 0;
         this.highScore = parseInt(localStorage.getItem('highScore')) || 0;
+        this.availableBlocks = this.generateNewBlocks();
+    }
+
+    generateNewBlocks() {
+        const blocks = [];
+        for (let i = 0; i < CONFIG.BLOCKS.NUM_CHOICES; i++) {
+            const randomIndex = Math.floor(Math.random() * CONFIG.BLOCKS.TYPES.length);
+            blocks.push({
+                type: CONFIG.BLOCKS.TYPES[randomIndex],
+                color: i + 1 // Maps to COLORS.BLOCKS index
+            });
+        }
+        return blocks;
     }
 
     updatePhase() {
@@ -32,9 +45,10 @@ class GameState {
     canPlaceBlock(block, x, y) {
         if (!block) return false;
 
-        for (let i = 0; i < block.length; i++) {
-            for (let j = 0; j < block[0].length; j++) {
-                if (block[i][j]) {
+        const blockPattern = block.type || block;
+        for (let i = 0; i < blockPattern.length; i++) {
+            for (let j = 0; j < blockPattern[0].length; j++) {
+                if (blockPattern[i][j]) {
                     const gridX = x + j;
                     const gridY = y + i;
 
@@ -52,15 +66,29 @@ class GameState {
     placeBlock(block, x, y) {
         if (!this.canPlaceBlock(block, x, y)) return false;
 
-        for (let i = 0; i < block.length; i++) {
-            for (let j = 0; j < block[0].length; j++) {
-                if (block[i][j]) {
-                    this.grid[y + i][x + j] = 1;
+        const blockPattern = block.type || block;
+        const blockColor = block.color || 1;
+
+        for (let i = 0; i < blockPattern.length; i++) {
+            for (let j = 0; j < blockPattern[0].length; j++) {
+                if (blockPattern[i][j]) {
+                    this.grid[y + i][x + j] = blockColor;
                 }
             }
         }
 
-        this.checkLines(x, y, block[0].length, block.length);
+        // Remove the placed block from available blocks
+        if (block.color) {
+            const index = this.availableBlocks.indexOf(block);
+            if (index > -1) {
+                this.availableBlocks.splice(index, 1);
+                if (this.availableBlocks.length === 0) {
+                    this.availableBlocks = this.generateNewBlocks();
+                }
+            }
+        }
+
+        this.checkLines(x, y, blockPattern[0].length, blockPattern.length);
         return true;
     }
 
@@ -70,14 +98,14 @@ class GameState {
 
         // Check rows
         for (let y = startY; y < startY + height; y++) {
-            if (y < CONFIG.GAME.GRID_SIZE && this.grid[y].every(cell => cell === 1)) {
+            if (y < CONFIG.GAME.GRID_SIZE && this.grid[y].every(cell => cell > 0)) {
                 completedRows.push(y);
             }
         }
 
         // Check columns
         for (let x = startX; x < startX + width; x++) {
-            if (x < CONFIG.GAME.GRID_SIZE && this.grid.every(row => row[x] === 1)) {
+            if (x < CONFIG.GAME.GRID_SIZE && this.grid.every(row => row[x] > 0)) {
                 completedCols.push(x);
             }
         }
@@ -125,7 +153,7 @@ class GameState {
     }
 
     getAvailableBlocks() {
-        return CONFIG.BLOCKS.TYPES.filter(block => {
+        return this.availableBlocks.filter(block => {
             // Check if the block can be placed anywhere on the grid
             for (let y = 0; y < CONFIG.GAME.GRID_SIZE; y++) {
                 for (let x = 0; x < CONFIG.GAME.GRID_SIZE; x++) {
