@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>GridCrafter</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen">
+            <h1>GridCrafter</h1>
+            <button id="start-button" class="glow-button">Start Game</button>
+            <div class="instructions">
+                <h2>How to Play</h2>
+                <p>Clear rows and columns to score points!</p>
+                <p>Score multipliers increase over time:</p>
+                <ul>
+                    <li>0-30s: 1x</li>
+                    <li>31-60s: 1.5x</li>
+                    <li>61-90s: 2x</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <div id="score-display">Score: 0</div>
+                <div id="multiplier-display">×1.0</div>
+                <div id="time-display">Time: 90s</div>
+            </div>
+            <div id="canvas-container">
+                <canvas id="game-canvas"></canvas>
+            </div>
+            <div id="blocks-container">
+                <!-- Dynamic block selection will be added here -->
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen">
+            <h2>Game Over!</h2>
+            <p id="final-score">Score: 0</p>
+            <button id="restart-button" class="glow-button">Play Again</button>
+            <button id="share-button" class="glow-button">Share Score</button>
+        </div>
+    </div>
+
+    <!-- Audio Elements -->
+    <audio id="bgm" loop>
+        <source src="audio/bgm.mp3" type="audio/mp3">
+    </audio>
+    <audio id="place-sound">
+        <source src="audio/place.mp3" type="audio/mp3">
+    </audio>
+    <audio id="clear-sound">
+        <source src="audio/clear.mp3" type="audio/mp3">
+    </audio>
+    <audio id="combo-sound">
+        <source src="audio/combo.mp3" type="audio/mp3">
+    </audio>
+    <audio id="phase-change">
+        <source src="audio/phase-change.mp3" type="audio/mp3">
+    </audio>
+    
+    <!-- Game Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/audioManager.js"></script>
+    <script src="js/animationManager.js"></script>
+    <script src="js/gameState.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
