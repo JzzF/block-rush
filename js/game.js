@@ -13,6 +13,7 @@ class Game {
         this.lastFrameTime = 0;
         this.isRunning = false;
         this.isDragging = false;
+        this.touchStartY = 0;
 
         // Bind methods
         this.start = this.start.bind(this);
@@ -24,8 +25,14 @@ class Game {
         this.handleTouchStart = this.handleTouchStart.bind(this);
         this.handleTouchEnd = this.handleTouchEnd.bind(this);
         this.handleBlockSelect = this.handleBlockSelect.bind(this);
+        this.preventSwipe = this.preventSwipe.bind(this);
 
-        // Event listeners
+        // Event listeners for the entire document
+        document.addEventListener('touchstart', this.preventSwipe, { passive: false });
+        document.addEventListener('touchmove', this.preventSwipe, { passive: false });
+        document.addEventListener('touchend', this.preventSwipe, { passive: false });
+
+        // Game-specific event listeners
         this.canvas.addEventListener('mousemove', this.handleMouseMove);
         this.canvas.addEventListener('touchmove', this.handleTouchMove, { passive: false });
         this.canvas.addEventListener('click', this.handleClick);
@@ -34,9 +41,6 @@ class Game {
         document.getElementById('start-button').addEventListener('click', this.start);
         document.getElementById('restart-button').addEventListener('click', this.start);
         document.getElementById('share-button').addEventListener('click', () => this.shareScore());
-
-        // Prevent default touch behavior on game canvas
-        this.canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
         // Initialize Telegram WebApp
         if (window.Telegram?.WebApp) {
@@ -47,6 +51,10 @@ class Game {
             window.Telegram.WebApp.onEvent('viewportChanged', () => {
                 window.Telegram.WebApp.expand();
             });
+
+            // Set up additional Telegram-specific handlers
+            window.Telegram.WebApp.setBackgroundColor('#000000');
+            window.Telegram.WebApp.enableClosingConfirmation();
         }
 
         // Set up the renderer's block selection callback
@@ -54,6 +62,30 @@ class Game {
 
         // Show start screen
         this.showScreen('start-screen');
+    }
+
+    preventSwipe(event) {
+        // Always prevent default behavior for touch events
+        event.preventDefault();
+        
+        if (event.type === 'touchstart') {
+            this.touchStartY = event.touches[0].clientY;
+        }
+        
+        // If it's a significant vertical swipe, prevent it
+        if (event.type === 'touchmove' && event.touches[0]) {
+            const touchY = event.touches[0].clientY;
+            const deltaY = touchY - this.touchStartY;
+            
+            if (Math.abs(deltaY) > 10) { // Threshold for vertical swipe
+                event.preventDefault();
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.expand();
+                }
+            }
+        }
+        
+        return false;
     }
 
     start() {
