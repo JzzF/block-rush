@@ -167,7 +167,6 @@ class Game {
     }
 
     handleMouseMove(event) {
-        event.preventDefault();
         const rect = this.canvas.getBoundingClientRect();
         this.mouseX = event.clientX - rect.left;
         this.mouseY = event.clientY - rect.top;
@@ -175,83 +174,81 @@ class Game {
 
     handleTouchMove(event) {
         event.preventDefault();
-        if (!event.touches[0]) return;
-        
-        const rect = this.canvas.getBoundingClientRect();
-        this.mouseX = event.touches[0].clientX - rect.left;
-        this.mouseY = event.touches[0].clientY - rect.top;
+        if (event.touches.length > 0) {
+            const rect = this.canvas.getBoundingClientRect();
+            this.mouseX = event.touches[0].clientX - rect.left;
+            this.mouseY = event.touches[0].clientY - rect.top;
+        }
+    }
 
-        if (this.isDragging && this.selectedBlockIndex !== -1) {
-            // Update preview position
-            requestAnimationFrame(this.update);
+    handleClick(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        // Check if clicked on a block option
+        const blockIndex = this.renderer.isPointInBlockArea(x, y);
+        if (blockIndex !== -1) {
+            this.handleBlockSelect(blockIndex);
+            return;
+        }
+
+        // Place block if one is selected
+        if (this.selectedBlockIndex !== -1) {
+            const gridX = Math.floor((x - this.renderer.gridOffsetX) / this.renderer.blockSize);
+            const gridY = Math.floor((y - this.renderer.gridOffsetY) / this.renderer.blockSize);
+            
+            if (this.gameState.canPlaceBlock(this.gameState.availableBlocks[this.selectedBlockIndex], gridX, gridY)) {
+                this.gameState.placeBlock(this.gameState.availableBlocks[this.selectedBlockIndex], gridX, gridY);
+                this.selectedBlockIndex = -1;
+                this.audioManager.playSound('place');
+                this.updateAvailableBlocks();
+            }
         }
     }
 
     handleTouchStart(event) {
         event.preventDefault();
-        this.isDragging = true;
-        
-        const rect = this.canvas.getBoundingClientRect();
-        const touch = event.touches[0];
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        // Check if touch is in block selection area
-        const blockSize = this.renderer.blockSize;
-        const gridSize = CONFIG.GRID.SIZE;
-        const blockOptionsY = (gridSize + 1) * blockSize;
-        
-        if (y >= blockOptionsY) {
-            const blockIndex = Math.floor(x / blockSize);
-            if (blockIndex >= 0 && blockIndex < CONFIG.BLOCKS.TYPES.length) {
+        if (event.touches.length > 0) {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = event.touches[0].clientX - rect.left;
+            const y = event.touches[0].clientY - rect.top;
+
+            // Check if touched a block option
+            const blockIndex = this.renderer.isPointInBlockArea(x, y);
+            if (blockIndex !== -1) {
                 this.handleBlockSelect(blockIndex);
             }
+
+            this.mouseX = x;
+            this.mouseY = y;
+            this.isDragging = true;
         }
     }
 
     handleTouchEnd(event) {
         event.preventDefault();
-        if (this.selectedBlockIndex === -1) return;
-
-        const rect = this.canvas.getBoundingClientRect();
-        const x = this.mouseX;
-        const y = this.mouseY;
-        const gridX = Math.floor(x / this.renderer.blockSize);
-        const gridY = Math.floor(y / this.renderer.blockSize);
-
-        const selectedBlock = CONFIG.BLOCKS.TYPES[this.selectedBlockIndex];
-        if (this.gameState.placeBlock(selectedBlock, gridX, gridY)) {
-            this.audioManager.playPlaceSound();
-            this.animationManager.addBlockPlaceAnimation(gridX, gridY, CONFIG.COLORS.BLOCKS[1]);
-            this.updateAvailableBlocks();
-            this.selectedBlockIndex = -1;
+        if (this.isDragging && this.selectedBlockIndex !== -1) {
+            const gridX = Math.floor((this.mouseX - this.renderer.gridOffsetX) / this.renderer.blockSize);
+            const gridY = Math.floor((this.mouseY - this.renderer.gridOffsetY) / this.renderer.blockSize);
+            
+            if (this.gameState.canPlaceBlock(this.gameState.availableBlocks[this.selectedBlockIndex], gridX, gridY)) {
+                this.gameState.placeBlock(this.gameState.availableBlocks[this.selectedBlockIndex], gridX, gridY);
+                this.selectedBlockIndex = -1;
+                this.audioManager.playSound('place');
+                this.updateAvailableBlocks();
+            }
         }
-        
         this.isDragging = false;
     }
 
-    handleClick(event) {
-        if (this.selectedBlockIndex === -1) return;
-
-        const rect = this.canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const gridX = Math.floor(x / this.renderer.blockSize);
-        const gridY = Math.floor(y / this.renderer.blockSize);
-
-        const selectedBlock = CONFIG.BLOCKS.TYPES[this.selectedBlockIndex];
-        if (this.gameState.placeBlock(selectedBlock, gridX, gridY)) {
-            this.audioManager.playPlaceSound();
-            this.animationManager.addBlockPlaceAnimation(gridX, gridY, CONFIG.COLORS.BLOCKS[1]);
-
-            // Update available blocks
-            this.updateAvailableBlocks();
-            this.selectedBlockIndex = -1;
-        }
-    }
-
     handleBlockSelect(index) {
-        this.selectedBlockIndex = index;
+        if (index === this.selectedBlockIndex) {
+            this.selectedBlockIndex = -1;
+        } else {
+            this.selectedBlockIndex = index;
+            this.audioManager.playSound('select');
+        }
     }
 
     updateAvailableBlocks() {

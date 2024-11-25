@@ -15,7 +15,8 @@ class Renderer {
         const containerHeight = container.clientHeight;
         
         // Make the canvas square based on the smaller dimension
-        const size = Math.min(containerWidth, containerHeight);
+        const size = Math.min(containerWidth, containerHeight * 0.8);
+        
         this.canvas.width = size;
         this.canvas.height = size * 1.2; // Extra space for block options
         
@@ -83,9 +84,13 @@ class Renderer {
     }
 
     drawPreview(block, mouseX, mouseY) {
+        if (!block) return;
+        
         const blockPattern = block.type || block;
         const gridX = Math.floor((mouseX - this.gridOffsetX) / this.blockSize);
         const gridY = Math.floor((mouseY - this.gridOffsetY) / this.blockSize);
+
+        if (gridX < 0 || gridY < 0) return;
 
         this.ctx.globalAlpha = 0.5;
         for (let i = 0; i < blockPattern.length; i++) {
@@ -137,7 +142,7 @@ class Renderer {
                 }
             }
 
-            // Add click handler for this block option
+            // Add click/touch area
             const blockArea = {
                 x: currentX - spacing/2,
                 y: optionsY - spacing/2,
@@ -146,7 +151,25 @@ class Renderer {
                 index: index
             };
 
+            // Store the block area for click/touch detection
+            if (!this.blockAreas) this.blockAreas = [];
+            this.blockAreas[index] = blockArea;
+
             currentX += blockWidth + spacing;
         });
+    }
+
+    // Helper method to check if a point is within a block option area
+    isPointInBlockArea(x, y) {
+        if (!this.blockAreas) return -1;
+        
+        for (let i = 0; i < this.blockAreas.length; i++) {
+            const area = this.blockAreas[i];
+            if (x >= area.x && x <= area.x + area.width &&
+                y >= area.y && y <= area.y + area.height) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

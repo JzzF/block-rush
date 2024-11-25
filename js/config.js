@@ -71,17 +71,19 @@ const CONFIG = {
     BLOCKS: {
         NUM_CHOICES: 3,
         TYPES: [
-            // 1x1 square
+            // 1x1 block
             [[1]],
-            
-            // 2x2 square
-            [[1, 1],
-             [1, 1]],
-             
-            // 3x3 square
-            [[1, 1, 1],
-             [1, 1, 1],
-             [1, 1, 1]]
+            // 2x2 block
+            [
+                [1, 1],
+                [1, 1]
+            ],
+            // 3x3 block
+            [
+                [1, 1, 1],
+                [1, 1, 1],
+                [1, 1, 1]
+            ]
         ]
     },
 
