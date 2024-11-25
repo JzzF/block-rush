@@ -106,56 +106,40 @@ class Renderer {
     }
 
     drawBlockOptions(blocks, selectedIndex) {
-        const optionsY = this.gridOffsetY + (CONFIG.GAME.GRID_SIZE + 1) * this.blockSize;
-        const spacing = this.blockSize / 2;
-        const totalWidth = blocks.reduce((width, block) => {
-            return width + (block.type[0].length * this.blockSize) + spacing;
-        }, -spacing);
-        
-        let currentX = (this.canvas.width - totalWidth) / 2;
+        const optionWidth = this.blockSize * 4;
+        const optionHeight = this.blockSize * 4;
+        const spacing = this.blockSize;
+        const totalWidth = (optionWidth * blocks.length) + (spacing * (blocks.length - 1));
+        const startX = (this.canvas.width - totalWidth) / 2;
+        const startY = this.canvas.height - optionHeight - this.blockSize;
 
         blocks.forEach((block, index) => {
-            const blockWidth = block.type[0].length * this.blockSize;
-            const blockHeight = block.type.length * this.blockSize;
-            
-            // Draw selection background if selected
-            if (index === selectedIndex) {
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                this.ctx.fillRect(
-                    currentX - spacing/2,
-                    optionsY - spacing/2,
-                    blockWidth + spacing,
-                    blockHeight + spacing
-                );
-            }
+            const x = startX + (index * (optionWidth + spacing));
+            const y = startY;
+
+            // Draw option background
+            this.ctx.fillStyle = index === selectedIndex ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)';
+            this.ctx.fillRect(x, y, optionWidth, optionHeight);
+
+            // Center the block pattern within the option area
+            const pattern = block.type;
+            const blockWidth = pattern[0].length * this.blockSize;
+            const blockHeight = pattern.length * this.blockSize;
+            const offsetX = x + (optionWidth - blockWidth) / 2;
+            const offsetY = y + (optionHeight - blockHeight) / 2;
 
             // Draw the block pattern
-            for (let i = 0; i < block.type.length; i++) {
-                for (let j = 0; j < block.type[0].length; j++) {
-                    if (block.type[i][j]) {
+            for (let i = 0; i < pattern.length; i++) {
+                for (let j = 0; j < pattern[0].length; j++) {
+                    if (pattern[i][j]) {
                         this.drawBlock(
-                            currentX + j * this.blockSize,
-                            optionsY + i * this.blockSize,
+                            offsetX + (j * this.blockSize),
+                            offsetY + (i * this.blockSize),
                             CONFIG.COLORS.BLOCKS[block.color]
                         );
                     }
                 }
             }
-
-            // Add click/touch area
-            const blockArea = {
-                x: currentX - spacing/2,
-                y: optionsY - spacing/2,
-                width: blockWidth + spacing,
-                height: blockHeight + spacing,
-                index: index
-            };
-
-            // Store the block area for click/touch detection
-            if (!this.blockAreas) this.blockAreas = [];
-            this.blockAreas[index] = blockArea;
-
-            currentX += blockWidth + spacing;
         });
     }
 

@@ -90,11 +90,9 @@ class Game {
 
     start() {
         this.gameState.reset();
-        this.audioManager.startBGM();
         this.isRunning = true;
         this.lastFrameTime = performance.now();
         this.showScreen('game-screen');
-        this.updateAvailableBlocks();
         requestAnimationFrame(this.update);
     }
 
@@ -121,6 +119,9 @@ class Game {
         this.renderer.drawGrid();
         this.renderer.drawBlocks(this.gameState.grid);
         
+        // Draw block options at the bottom
+        this.renderer.drawBlockOptions(this.gameState.availableBlocks, this.selectedBlockIndex);
+        
         // Draw block preview if one is selected
         if (this.selectedBlockIndex !== -1) {
             this.renderer.drawPreview(
@@ -130,19 +131,10 @@ class Game {
             );
         }
 
-        // Draw block options
-        this.renderer.drawBlockOptions(this.gameState.availableBlocks, this.selectedBlockIndex);
-
         // Draw animations
         this.animationManager.draw(this.renderer.ctx);
 
-        // Check game over
-        if (this.gameState.checkGameOver()) {
-            this.showGameOver();
-            return;
-        }
-
-        requestAnimationFrame(this.update);
+        requestAnimationFrame(this.update.bind(this));
     }
 
     handleLineClear(lines) {
