@@ -111,19 +111,8 @@ class Game {
         const deltaTime = currentTime - this.lastFrameTime;
         this.lastFrameTime = currentTime;
 
-        // Update game state
-        this.gameState.timeRemaining -= deltaTime / 1000;
-        
-        // Check phase change
-        if (this.gameState.updatePhase()) {
-            this.audioManager.playPhaseChangeSound();
-            this.audioManager.updateBGMSpeed(this.gameState.currentPhase);
-            this.animationManager.addPhaseChangeAnimation();
-            document.body.className = `phase-${this.gameState.currentPhase}`;
-        }
-
-        // Update UI
-        this.updateUI();
+        // Update animations
+        this.animationManager.update(deltaTime);
 
         // Clear canvas
         this.renderer.clear();
@@ -131,39 +120,71 @@ class Game {
         // Draw game elements
         this.renderer.drawGrid();
         this.renderer.drawBlocks(this.gameState.grid);
-
-        // Draw preview if a block is selected
+        
+        // Draw block preview if one is selected
         if (this.selectedBlockIndex !== -1) {
-            const selectedBlock = CONFIG.BLOCKS.TYPES[this.selectedBlockIndex];
-            this.renderer.drawPreview(selectedBlock, this.mouseX, this.mouseY);
+            this.renderer.drawPreview(
+                this.gameState.availableBlocks[this.selectedBlockIndex],
+                this.mouseX,
+                this.mouseY
+            );
         }
 
-        // Update and draw animations
-        this.animationManager.update(currentTime);
+        // Draw block options
+        this.renderer.drawBlockOptions(this.gameState.availableBlocks, this.selectedBlockIndex);
+
+        // Draw animations
+        this.animationManager.draw(this.renderer.ctx);
 
         // Check game over
-        if (this.gameState.isGameOverCondition()) {
-            this.stop();
+        if (this.gameState.checkGameOver()) {
+            this.showGameOver();
             return;
         }
 
         requestAnimationFrame(this.update);
     }
 
-    updateUI() {
-        // Update displays
-        document.getElementById('score-display').textContent = `Score: ${this.gameState.score}`;
-        document.getElementById('time-display').textContent = `Time: ${Math.ceil(this.gameState.timeRemaining)}s`;
-        document.getElementById('multiplier-display').textContent = 
-            `×${CONFIG.GAME.PHASES[this.gameState.currentPhase].MULTIPLIER.toFixed(1)}`;
+    handleLineClear(lines) {
+        if (lines.length === 0) return;
 
-        // Update timer urgency
-        const timeDisplay = document.getElementById('time-display');
-        if (this.gameState.timeRemaining <= 10) {
-            timeDisplay.classList.add('urgent-timer');
+        // Add line clear animations
+        lines.forEach(line => {
+            this.animationManager.addLineClearAnimation(
+                line.type,
+                line.index,
+                this.renderer.gridOffsetX,
+                this.renderer.gridOffsetY,
+                this.renderer.blockSize
+            );
+        });
+
+        // Add score popup at a random cleared line
+        const randomLine = lines[Math.floor(Math.random() * lines.length)];
+        const score = CONFIG.SCORING.LINES[lines.length] || (CONFIG.SCORING.BASE_POINTS * lines.length);
+        
+        let popupX, popupY;
+        if (randomLine.type === 'row') {
+            popupX = this.renderer.gridOffsetX + (CONFIG.GAME.GRID_SIZE * this.renderer.blockSize) / 2;
+            popupY = this.renderer.gridOffsetY + randomLine.index * this.renderer.blockSize;
         } else {
-            timeDisplay.classList.remove('urgent-timer');
+            popupX = this.renderer.gridOffsetX + randomLine.index * this.renderer.blockSize;
+            popupY = this.renderer.gridOffsetY + (CONFIG.GAME.GRID_SIZE * this.renderer.blockSize) / 2;
         }
+
+        this.animationManager.addScorePopup(score, popupX, popupY);
+
+        // Add combo animation if applicable
+        if (this.gameState.comboCount > 1) {
+            this.animationManager.addComboAnimation(
+                this.gameState.comboCount,
+                this.canvas.width / 2,
+                this.canvas.height / 2
+            );
+        }
+
+        // Play sound effect
+        this.audioManager.playSound('clear');
     }
 
     handleMouseMove(event) {
@@ -261,6 +282,12 @@ class Game {
             screen.style.display = 'none';
         });
         document.getElementById(screenId).style.display = 'flex';
+    }
+
+    showGameOver() {
+        this.stop();
+        document.getElementById('final-score').textContent = `Score: ${this.gameState.score}`;
+        this.showScreen('game-over-screen');
     }
 
     shareScore() {
