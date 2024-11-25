@@ -12,26 +12,41 @@ class Game {
         this.mouseY = 0;
         this.lastFrameTime = 0;
         this.isRunning = false;
+        this.isDragging = false;
 
         // Bind methods
         this.start = this.start.bind(this);
         this.stop = this.stop.bind(this);
         this.update = this.update.bind(this);
         this.handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleTouchMove = this.handleTouchMove.bind(this);
         this.handleClick = this.handleClick.bind(this);
+        this.handleTouchStart = this.handleTouchStart.bind(this);
+        this.handleTouchEnd = this.handleTouchEnd.bind(this);
         this.handleBlockSelect = this.handleBlockSelect.bind(this);
 
         // Event listeners
         this.canvas.addEventListener('mousemove', this.handleMouseMove);
+        this.canvas.addEventListener('touchmove', this.handleTouchMove, { passive: false });
         this.canvas.addEventListener('click', this.handleClick);
+        this.canvas.addEventListener('touchstart', this.handleTouchStart, { passive: false });
+        this.canvas.addEventListener('touchend', this.handleTouchEnd, { passive: false });
         document.getElementById('start-button').addEventListener('click', this.start);
         document.getElementById('restart-button').addEventListener('click', this.start);
         document.getElementById('share-button').addEventListener('click', () => this.shareScore());
+
+        // Prevent default touch behavior on game canvas
+        this.canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
         // Initialize Telegram WebApp
         if (window.Telegram?.WebApp) {
             window.Telegram.WebApp.ready();
             window.Telegram.WebApp.expand();
+            
+            // Prevent Telegram WebApp from closing on swipe
+            window.Telegram.WebApp.onEvent('viewportChanged', () => {
+                window.Telegram.WebApp.expand();
+            });
         }
 
         // Set up the renderer's block selection callback
@@ -120,9 +135,67 @@ class Game {
     }
 
     handleMouseMove(event) {
+        event.preventDefault();
         const rect = this.canvas.getBoundingClientRect();
         this.mouseX = event.clientX - rect.left;
         this.mouseY = event.clientY - rect.top;
+    }
+
+    handleTouchMove(event) {
+        event.preventDefault();
+        if (!event.touches[0]) return;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouseX = event.touches[0].clientX - rect.left;
+        this.mouseY = event.touches[0].clientY - rect.top;
+
+        if (this.isDragging && this.selectedBlockIndex !== -1) {
+            // Update preview position
+            requestAnimationFrame(this.update);
+        }
+    }
+
+    handleTouchStart(event) {
+        event.preventDefault();
+        this.isDragging = true;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const touch = event.touches[0];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        // Check if touch is in block selection area
+        const blockSize = this.renderer.blockSize;
+        const gridSize = CONFIG.GRID.SIZE;
+        const blockOptionsY = (gridSize + 1) * blockSize;
+        
+        if (y >= blockOptionsY) {
+            const blockIndex = Math.floor(x / blockSize);
+            if (blockIndex >= 0 && blockIndex < CONFIG.BLOCKS.TYPES.length) {
+                this.handleBlockSelect(blockIndex);
+            }
+        }
+    }
+
+    handleTouchEnd(event) {
+        event.preventDefault();
+        if (this.selectedBlockIndex === -1) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const x = this.mouseX;
+        const y = this.mouseY;
+        const gridX = Math.floor(x / this.renderer.blockSize);
+        const gridY = Math.floor(y / this.renderer.blockSize);
+
+        const selectedBlock = CONFIG.BLOCKS.TYPES[this.selectedBlockIndex];
+        if (this.gameState.placeBlock(selectedBlock, gridX, gridY)) {
+            this.audioManager.playPlaceSound();
+            this.animationManager.addBlockPlaceAnimation(gridX, gridY, CONFIG.COLORS.BLOCKS[1]);
+            this.updateAvailableBlocks();
+            this.selectedBlockIndex = -1;
+        }
+        
+        this.isDragging = false;
     }
 
     handleClick(event) {
@@ -164,7 +237,7 @@ class Game {
     shareScore() {
         if (window.Telegram?.WebApp) {
             const score = this.gameState.score;
-            const message = `🎮 I scored ${score} points in GridCrafter!\n\nCan you beat my score? Try now:`;
+            const message = `🎮 I scored ${score} points in Block Rush!\n\nCan you beat my score? Try now:`;
             window.Telegram.WebApp.sendData(JSON.stringify({
                 type: 'share_score',
                 score: score,
