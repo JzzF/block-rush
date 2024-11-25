@@ -1,4 +1,4 @@
-# GridCrafter
+# Block Rush
 
 A fast-paced puzzle game for Telegram Mini Apps where players strategically place blocks on an 8x8 grid to clear lines and score points within a 90-second time limit.
 
@@ -38,7 +38,7 @@ Clear multiple lines at once for combo bonuses!
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/gridcrafter.git
+git clone https://github.com/your-username/block-rush.git
 ```
 
 2. Open index.html in a web browser or serve through a local server
@@ -46,7 +46,7 @@ git clone https://github.com/your-username/gridcrafter.git
 ### Project Structure
 
 ```
-gridcrafter/
+block-rush/
 ├── index.html          # Main game HTML
 ├── css/
 │   ├── styles.css      # Core styles
